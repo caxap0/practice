@@ -1,25 +1,24 @@
 import threading
+import concurrent.futures
 
 
 class Factorization:
-    def __init__(self, input_filename, output_filename):
+    def __init__(self, input_filename, output_filename, num_threads):
         self.input_filename = input_filename
         self.output_filename = output_filename
+        self.num_threads = num_threads
 
-        self.num_ready = threading.Event()
-        self.res_ready = threading.Event()
         self.pause_event = threading.Event()
-
-        self.pause_event.set()  # не на паузе
-
-        self.num = None
-        self.res = None
+        self.pause_event.set()
 
         self.flag_exit = False
         self.file_read_flag = False
-        self.pause_flag = False
 
-    def factorize(self, n):  # алгоритм факторизации числа
+    def process_number(self, num):
+        factors = self.factorize(num)
+        return f"{num} = {' * '.join(map(str, factors))}\n"
+
+    def factorize(self, n): # алгоритм факторизации числа
         if n < 2:
             return [n]
         i = 2
@@ -35,65 +34,49 @@ class Factorization:
 
     def keyboard(self):
         while not self.file_read_flag:
-            user_input = input()
+            user_input = input('Что сделать с программой - exit, pause, resume: ')
             if user_input == "exit":
                 self.flag_exit = True
                 self.pause_event.set()
                 break
             elif user_input == "pause":
-                self.pause_flag = True
                 self.pause_event.clear()
             elif user_input == "resume":
-                self.pause_flag = False
                 self.pause_event.set()
 
-    def factorizator(self):
-        while True:
-            if self.flag_exit:
-                break
-            self.num_ready.wait()
-            self.num_ready.clear()
-            if self.num is None:
-                break
-
-            self.pause_event.wait()
-
-            self.res = self.factorize(self.num)
-            self.res_ready.set()
-
     def decomposition(self):
-        thread = threading.Thread(target=self.factorizator)
         keyboard_thread = threading.Thread(target=self.keyboard)
-        thread.start()
         keyboard_thread.start()
 
-        with open(self.input_filename, 'r') as f, open(self.output_filename, 'w') as w:
-            for line in f:
-                if self.flag_exit:
-                    break
-                line = line.strip()
-                if not line:
-                    continue
-
-                nums = [num.strip() for num in line.split(',') if num.strip()]
-                for num_str in nums:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_threads) as executor:
+            futures = []
+            with open(self.input_filename, 'r') as f, open(self.output_filename, 'w') as w:
+                for line in f:
                     if self.flag_exit:
                         break
-                    self.pause_event.wait()
-                    num = int(num_str)
-                    self.num = num
-                    self.res_ready.clear()
-                    self.num_ready.set()
-                    self.res_ready.wait()
+                    line = line.strip()
+                    if not line:
+                        continue
 
-                    fact_str = f"{self.num} = {' * '.join(map(str, self.res))}\n"
-                    w.write(fact_str)
+                    nums = [num.strip() for num in line.split(',') if num.strip()]
+                    for num_str in nums:
+                        if self.flag_exit:
+                            break
+                        self.pause_event.wait()
+                        num = int(num_str)
+
+                        future = executor.submit(self.process_number, num)
+                        futures.append(future)
+
+                for future in concurrent.futures.as_completed(futures):
+                    if self.flag_exit:
+                        break
+                    result_str = future.result()
+                    w.write(result_str)
                     w.flush()
 
-        self.num = None
-        self.num_ready.set()
         self.file_read_flag = True
-        thread.join()
+        keyboard_thread.join()
 
     @staticmethod
     def composition(fact):
@@ -105,10 +88,10 @@ class Factorization:
 
 
 if __name__ == "__main__":
-    factorizer = Factorization('test.txt', 'zapis.txt')
+    num_threads = int(input('Количество потоков: '))
+    if not 1 <= num_threads <= 8:
+        quit('Неправильное количество потоков. Завершение работы')
+
+    factorizer = Factorization('test.txt', 'zapis.txt', num_threads)
     factorizer.decomposition()
     print(factorizer.composition('2 * 2 * 2 * 2 * 7583'))
-
-"""
-Выполнил вроде всё, кроме дополнительных потоков с выбором. Надо изучать ThreadPoolExecutor с его Future'сами.
-"""

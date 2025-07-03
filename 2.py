@@ -1,6 +1,6 @@
 import threading
 import concurrent.futures
-
+import time
 
 class Factorization:
     def __init__(self, input_filename, output_filename, num_threads):
@@ -49,7 +49,7 @@ class Factorization:
         keyboard_thread.start()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_threads) as executor:
-            futures = []
+            # futures = []
             with open(self.input_filename, 'r') as f, open(self.output_filename, 'w') as w:
                 for line in f:
                     if self.flag_exit:
@@ -66,14 +66,18 @@ class Factorization:
                         num = int(num_str)
 
                         future = executor.submit(self.process_number, num)
-                        futures.append(future)
+                        # futures.append(future)
 
-                for future in concurrent.futures.as_completed(futures):
-                    if self.flag_exit:
-                        break
-                    result_str = future.result()
-                    w.write(result_str)
-                    w.flush()
+                        try:
+                            w.write(future.result())
+                            w.flush()
+                        except Exception as e:
+                            print(f"Ошибка при обработке числа {num_str}: {e}")
+
+                # for future in concurrent.futures.as_completed(futures):
+                #     if self.flag_exit:
+                #         break
+                    
 
         self.file_read_flag = True
         keyboard_thread.join()
@@ -88,10 +92,12 @@ class Factorization:
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     num_threads = int(input('Количество потоков: '))
-    if not 1 <= num_threads <= 8:
-        quit('Неправильное количество потоков. Завершение работы')
+    # if not 1 <= num_threads <= 8:
+    #     quit('Неправильное количество потоков. Завершение работы')
 
-    factorizer = Factorization('test.txt', 'zapis.txt', num_threads)
+    factorizer = Factorization('numbers.txt', 'zapis.txt', num_threads)
     factorizer.decomposition()
     print(factorizer.composition('2 * 2 * 2 * 2 * 7583'))
+    print(time.time() - start_time)

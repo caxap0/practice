@@ -22,7 +22,7 @@ class Factorization:
         self.flag_exit = False
         self.file_read_flag = False
 
-        self.file_lock = threading.Lock()
+        self.mutex = threading.Lock()
 
     def process_number(self, num):
         factors = self.factorize(num)
@@ -54,6 +54,13 @@ class Factorization:
             elif user_input == "resume":
                 self.pause_event.set()
 
+    def swrite(self, num):
+        res = self.process_number(num)
+        with self.mutex:
+            with open(self.output_filename, 'a') as f:
+                f.write(res)
+                f.flush()
+
     def decomposition(self):
         keyboard_thread = threading.Thread(target=self.keyboard)
         keyboard_thread.start()
@@ -75,12 +82,7 @@ class Factorization:
                         self.pause_event.wait()
                         num = int(num_str)
 
-                        future = executor.submit(self.process_number, num)
-
-                        with self.file_lock:
-                            result_str = future.result()
-                            w.write(result_str)
-                            w.flush()
+                        executor.submit(self.swrite, num)
 
         self.file_read_flag = True
         keyboard_thread.join()

@@ -106,6 +106,6 @@ if __name__ == "__main__":
 
     timeout = int(input("Максимальное время работы программы: "))
 
-    factorizer = Factorization('test.txt', 'zapis.txt', num_threads, timeout)
+    factorizer = Factorization('data/test.txt', 'data/zapis.txt', num_threads, timeout)
     factorizer.decomposition()
     print(factorizer.composition('2 * 2 * 2 * 2 * 7583'))

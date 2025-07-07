@@ -1,6 +1,6 @@
 import threading
 import concurrent.futures
-import time
+# import time
 import queue
 
 class Factorization:
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     if not 1 <= num_threads <= 8:
         quit('Неправильное количество потоков. Завершение работы')
 
-    factorizer = Factorization('test.txt', 'zapis.txt', num_threads)
+    factorizer = Factorization('data/test.txt', 'data/zapis.txt', num_threads)
     factorizer.decomposition()
     # print(factorizer.composition('2 * 2 * 2 * 2 * 7583'))
     # print(time.time() - start_time)
